@@ -1,3 +1,7 @@
+# ==========================================
+# STEP 1: DATASET
+# ==========================================
+
 items = [
     {
         "id": 1,
@@ -73,24 +77,28 @@ items = [
     },
 ]
 
-
-for item in items:
-    print(item)
-    
 user_preferences = {
-    "preferred_category": "programming",
-    "preferred_tags": ["python", "django", "api"]
+    "preferred_category": "education",
+    "preferred_tags": ["ml", "productivity", "archtecture-ai-explained"]
 }
-    
+
+
+# ==========================================
+# STEP 2 & 3: RULE-BASED SYSTEM
+# ==========================================
+
 def calculate_score(item, user_preferences):
     score = 0
 
+    # Category match
     if item["category"] == user_preferences["preferred_category"]:
         score += 3
 
+    # Tag match
     matching_tags = set(item["tags"]) & set(user_preferences["preferred_tags"])
     score += len(matching_tags) * 2
 
+    # Numeric contribution
     score += item["popularity"] / 50
     score += item["recency"] / 50
 
@@ -113,6 +121,8 @@ def filter_items(items, user_preferences, min_popularity=0):
     return filtered
 
 
+print("\n================ RULE-BASED RECOMMENDATION ================\n")
+
 filtered_items = filter_items(items, user_preferences, min_popularity=80)
 
 scored_items = []
@@ -123,7 +133,98 @@ for item in filtered_items:
 
 scored_items.sort(key=lambda x: x[1], reverse=True)
 
-print("\nFiltered and Ranked Recommendations:\n")
-
 for item, score in scored_items:
-    print(f"{item['title']} | Category: {item['category']} | Score: {round(score, 2)}")
+    print(f"{item['title']} → Score: {round(score, 2)}")
+
+
+# ==========================================
+# STEP 4: VECTOR REPRESENTATION
+# ==========================================
+
+all_categories = ["programming", "ai", "lifestyle", "education"]
+
+all_tags = [
+    "python", "django", "api", "backend",
+    "flutter", "mobile", "dart",
+    "ml", "ai", "data", "analysis",
+    "health", "routine", "wellness",
+    "study", "productivity", "focus",
+    "deep-learning", "dataset", "archtecture-ai-explained"
+]
+
+
+def item_to_vector(item):
+    vector = []
+
+    # Category encoding
+    for category in all_categories:
+        vector.append(1 if item["category"] == category else 0)
+
+    # Tag encoding
+    for tag in all_tags:
+        vector.append(1 if tag in item["tags"] else 0)
+
+    # Normalize numeric values
+    max_popularity = max(i["popularity"] for i in items)
+    max_recency = max(i["recency"] for i in items)
+
+    vector.append(item["popularity"] / max_popularity)
+    vector.append(item["recency"] / max_recency)
+
+    return vector
+
+
+print("\n================ VECTOR REPRESENTATION ================\n")
+
+item_vectors = {}
+
+for item in items:
+    vec = item_to_vector(item)
+    item_vectors[item["id"]] = vec
+
+    print(item["title"])
+    print(vec)
+    print()
+
+def user_to_vector(user_preferences):
+    vector = []
+
+    for category in all_categories:
+        vector.append(1 if user_preferences["preferred_category"] == category else 0)
+
+    for tag in all_tags:
+        vector.append(1 if tag in user_preferences["preferred_tags"] else 0)
+
+    return vector
+
+
+import math
+
+def cosine_similarity(vec1, vec2):
+    dot_product = sum(a * b for a, b in zip(vec1, vec2))
+    magnitude1 = math.sqrt(sum(a ** 2 for a in vec1))
+    magnitude2 = math.sqrt(sum(b ** 2 for b in vec2))
+
+    if magnitude1 == 0 or magnitude2 == 0:
+        return 0
+
+    return dot_product / (magnitude1 * magnitude2)
+
+
+print("\n================ COSINE SIMILARITY RECOMMENDATION ================\n")
+
+user_vector = user_to_vector(user_preferences)
+
+similar_items = []
+
+for item in items:
+    item_vector = item_to_vector(item)
+
+    similarity = cosine_similarity(user_vector, item_vector)
+
+    similar_items.append((item, similarity))
+    
+similar_items.sort(key=lambda x: x[1], reverse=True)
+
+for item, sim in similar_items:
+    print(f"{item['title']} → Similarity: {round(sim, 3)}")
